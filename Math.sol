@@ -133,4 +133,30 @@ contract math{
         return 3>>1 ;
     }
 
+    /**
+        整数溢出以及异常处理
+     */
+
+    function flow()
+        public
+        view
+        returns(uint)
+    {
+        uint8 mm = 255;
+        return mm;
+    }
+
+    /**
+        整型字面量
+     */
+    
+    function intergerTest()
+        public
+        pure
+        returns(uint)
+    {
+        uint num = (2**800+1)-2**800;
+        return num;
+    }
+
 }
