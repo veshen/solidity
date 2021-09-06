@@ -27,4 +27,27 @@ contract ByteArray{
         return num1.length;
     }
 
+    bytes1 public a = 0x7a; //0111 1010
+    bytes1 public b = 0x68; //0110 1000
+
+    //固定长度字节数组比较操作 < > <= >= != ==
+
+    function bijiao()
+        public
+        view
+        returns(bool)
+    {
+        return a > b;
+    }
+
+    //固定长度字节数组位操作 & | ~ ^ << >> 
+
+    function arrayWei()
+        public
+        view
+        returns(bytes1)
+    {
+        return ~a;
+    }
+
 }
