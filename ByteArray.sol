@@ -6,7 +6,7 @@
     bytes1 == uint8
 */
 
-pragma solidity ^0.4.0;
+pragma solidity ^0.8.7;
 
 contract ByteArray{
     /**
