@@ -20,9 +20,25 @@ contract PayableTest{
     //获取账户上的金额
     //this 就是合约地址
     function getBalance()
+        public
         returns(uint)
     {
         return address(this).balance;
+    }
+
+    function getThis()
+        public
+        returns(address)
+    {
+        return address(this);
+    }
+
+    function getAccountBalance(address account)
+        public
+        view
+        returns(uint)
+    {
+        return account.balance;
     }
 
 }
