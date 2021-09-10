@@ -13,12 +13,15 @@ interface IERC20 {
     /**
      * @dev Returns the amount of tokens in existence.
      返回存在的代币数量。
+     发行代币的总量，可以通过这个函数来获取。所有智能合约发行的代币总量是一定的，
+     totalSupply必须设置初始值。如果不设置初始值，这个代币发行就说明有问题。
      */
     function totalSupply() external view returns (uint256);
 
     /**
      * @dev Returns the amount of tokens owned by `account`.
-     返回 `account` 拥有的代币数量。
+     返回 `account` 拥有的代币数量。 
+     输入地址，可以获取该地址代币的余额。
      */
     function balanceOf(address account) external view returns (uint256);
 
@@ -27,8 +30,9 @@ interface IERC20 {
      *      将 `amount` 代币从调用者的帐户移动到 `recipient`。
      * Returns a boolean value indicating whether the operation succeeded.
      *返回一个布尔值，指示操作是否成功。
-     * Emits a {Transfer} event.
-     */发出 {Transfer} 事件。
+     * Emits a {Transfer} event. 发出 {Transfer} 事件。
+     调用transfer函数将自己的token转账给recipient地址，amount为转账个数
+     */
     function transfer(address recipient, uint256 amount) external returns (bool);
 
     /**
@@ -38,6 +42,7 @@ interface IERC20 {
      *通过 {transferFrom} 返回允许 `spender` 代表 `owner` 花费的剩余代币数量。 默认情况下为零。
      * This value changes when {approve} or {transferFrom} are called.
      当 {approve} 或 {transferFrom} 被调用时，这个值会改变。
+     返回_spender还能提取token的个数。
      */
     function allowance(address owner, address spender) external view returns (uint256);
 
@@ -57,6 +62,7 @@ interface IERC20 {
      * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
      *
      * Emits an {Approval} event.
+     批准_spender账户从自己的账户转移_value个token。可以分多次转移。
      */
     function approve(address spender, uint256 amount) external returns (bool);
 
@@ -69,6 +75,7 @@ interface IERC20 {
      * Returns a boolean value indicating whether the operation succeeded.
      *返回一个布尔值，指示操作是否成功。
      * Emits a {Transfer} event.
+     与approve搭配使用，approve批准之后，调用transferFrom函数来转移token。
      */
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
@@ -77,6 +84,7 @@ interface IERC20 {
      * another (`to`).
      *当 `value` 代币从一个帐户（`from`）移动到另一个帐户（`to`）时发出。
      * Note that `value` may be zero.
+     当成功转移token时，一定要触发Transfer事件
      */
     event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -84,6 +92,7 @@ interface IERC20 {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      当通过调用 {approve} 设置“所有者”的“支出者”津贴时发出。 `value` 是新的津贴。
+     当调用approval函数成功时，一定要触发Approval事件
      */
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
@@ -101,7 +110,14 @@ pragma solidity >=0.6.0 <0.8.0;
  但不应以这种直接方式访问它们，因为在处理 GSN 元交易时，
  发送和支付执行的帐户可能不是实际的发送者（就 一个应用程序有关）。
  * This contract is only required for intermediate, library-like contracts.
- 只有中间的、类似图书馆的合同才需要这个合同。
+ 只有中间的、类似library的contracts才需要这个contracts。
+
+ abstract 抽象合约 
+当合约中至少有一个功能没有实现时，需要将合约标记为抽象。即使所有功能都已实现，合约也可能被标记为抽象。
+
+这可以通过使用关键字来完成，如下例所示。请注意，此合约需要定义为abstract，因为定义了函数，
+但没有提供实现（没有给出实现主体）。abstractutterance(){ }
+@see https://docs.soliditylang.org/en/v0.8.7/contracts.html?highlight=abstract#abstract-contracts
  */
 abstract contract Context {
     function _msgSender() internal view virtual returns (address payable) {
@@ -114,6 +130,10 @@ abstract contract Context {
     }
 }
 // File: contracts/IUniswapV2Router01.sol
+
+// IUniswapV2Router01 通常用于在 Uniswap 中创建令牌对。
+
+// 令牌需要允许令牌对一些特权操作，例如重新平衡流动性。
 pragma solidity >=0.6.2;
 interface IUniswapV2Router01 {
     function factory() external pure returns (address);
@@ -362,7 +382,7 @@ abstract contract Ownable is Context {
      如果由所有者以外的任何帐户调用，则抛出。
      */
     modifier onlyOwner() {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        require(owner() == _msgSender(), "Ownable: 调用者不是所有者");
         _;
     }
 
@@ -718,7 +738,7 @@ contract BDR is IERC20, Ownable {
     // receive BNB
     receive() external payable {}
     // reflect
-        function totalSupply() public pure override returns (uint256) {
+    function totalSupply() public pure override returns (uint256) {
         return _tTotal;
     }
     function balanceOf(address account) public view override returns (uint256) {
