@@ -679,7 +679,7 @@ contract BDR is IERC20, Ownable {
     mapping (address => bool) public _isBlacklisted;
 
     // exlcude from fees and max transaction amount
-    //
+    //应该就是一个不需要支付手续费 没有最大额度转账限制的账户mapping
     mapping (address => bool) public _isExcludedFromFees;
 
     mapping (address => bool) public _isExcludedMaxSellTransactionAmount;
