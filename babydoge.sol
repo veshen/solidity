@@ -515,7 +515,7 @@ library SafeMath {
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a == 0) return 0;
         uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
+        require(c / a == b, "SafeMath: 乘法溢出 multiplication overflow");
         return c;
     }
 
@@ -628,17 +628,24 @@ contract BDR is IERC20, Ownable {
     string public name;
     string public symbol;
     uint8 public decimals;
+    // 排除在外 啥呢？
     address[] private _excluded;
     uint256 private _tFeeTotal;
+    // 存储用户的虚拟数量
     mapping(address => uint256) public _rOwned;
     mapping(address => uint256) public _tOwned;
     mapping (address => mapping (address => uint256)) private _allowances;
+    //最大值
     uint256 private constant MAX = ~uint256(0);
+    // _tTotal 真正的发行量（比如发行了 1w 枚币，精度为0，_tTotal = 10000）
     uint256 private constant _tTotal = 1000000000000000 * (10**18);
+    // 最大的一个可以整除 _tTotal 的数，这个数字类似于“虚拟的货币总量”
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
-    
+    //最大买入交易金额
     uint256 public maxBuyTranscationAmount = 2000000000000 * (10**18);
+    //最大卖出交易金额
     uint256 public maxSellTransactionAmount = 2000000000000 * (10**18);
+    //交换代币数量
     uint256 public swapTokensAtAmount = 1000000000000 * (10**18);
     uint256 public _maxWalletToken = 3000000000000 * (10**18);
     uint256 public lpLockTime;
@@ -665,22 +672,23 @@ contract BDR is IERC20, Ownable {
     uint256 public sellFeeIncreaseFactor = 100;
     address public presaleAddress = address(0);
     // timestamp for when the token can be traded freely on PCS
-    //代币可以在 PCS 上自由交易的时间戳
+    //代币可以在 PCS 上自由交易的时间戳 PCS 中央银行运营的支付清算和结算系统
     uint256 public tradingEnabledTimestamp = 1629274107;
     // blacklisted from all transfers
     //从所有转移中列入黑名单
-    mapping (address => bool) public _isBlacklisted;    
+    mapping (address => bool) public _isBlacklisted;
+
     // exlcude from fees and max transaction amount
-    //从费用和最大交易金额中排除
+    //
     mapping (address => bool) public _isExcludedFromFees;
+
     mapping (address => bool) public _isExcludedMaxSellTransactionAmount;
     // addresses that can make transfers before presale is over
     //可以在预售结束前进行转账的地址
     mapping (address => bool) private canTransferBeforeTradingIsEnabled;
     // store addresses that a automatic market maker pairs. Any transfer *to* these addresses
-    //自动做市商配对的商店地址。 任何转移*至*这些地址
     // could be subject to a maximum transfer amount
-    //可能会受到最大转账金额的限制
+    //自动做市商配对的商店地址。 任何转移*至*这些地址 可能会受到最大转账金额的限制
     mapping (address => bool) public automatedMarketMakerPairs;
     event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
     event ExcludeFromFees(address indexed account, bool isExcluded);
@@ -728,26 +736,34 @@ contract BDR is IERC20, Ownable {
         excludeFromFees(address(this), true);
         excludeFromFees(owner(), true);
 
+        //owner 可以在交易启用前转账
         canTransferBeforeTradingIsEnabled[owner()] = true;
 
+
+        //把发行量和虚拟货币总量全都给  owner
         _rOwned[owner()] = _rTotal;
         _tOwned[owner()] = _tTotal;
+        // 当成功转移token时，一定要触发Transfer事件
         emit Transfer(address(0), owner(), _tTotal);
     }
 
     // receive BNB
     receive() external payable {}
-    // reflect
+    // reflect 发行代币的总量
     function totalSupply() public pure override returns (uint256) {
         return _tTotal;
     }
+    //获取用户余额
     function balanceOf(address account) public view override returns (uint256) {
         if (_isExcludedFromFees[account]) return _tOwned[account];
+        // _rOwned[account] 地址对应的发行量
         return tokenFromReflection(_rOwned[account]);
     }
     function tokenFromReflection(uint256 rAmount) public view returns(uint256) {
+        // 查询地址账户中的发行量 必须小于总发行量
         require(rAmount <= _rTotal, "Amount must be less than total reflections");
         uint256 currentRate =  _getRate();
+        //返回发行量 / 一个比例
         return rAmount.div(currentRate);
     }
 
@@ -898,89 +914,100 @@ contract BDR is IERC20, Ownable {
     function getTradingIsEnabled() public view returns (bool) {
         return block.timestamp >= tradingEnabledTimestamp;
     }
-    function removeAllFee() private {
-    if(tokenRewardsFee == 0 && liquidityFee == 0) return;    
-    prevWallet1Fee = wallet1Fee;
-    prevWallet2Fee = wallet2Fee;
-    prevTokenRewardsFee = tokenRewardsFee;
-    prevLiquidityFee = liquidityFee;
-    prevTotalAdminFees = totalAdminFees;
-    wallet1Fee = 0;
-    wallet2Fee = 0;
-    tokenRewardsFee = 0;
-    liquidityFee = 0;
-    totalAdminFees = 0;
+    function removeAllFee()
+        private 
+    {
+        if(tokenRewardsFee == 0 && liquidityFee == 0) return;    
+        prevWallet1Fee = wallet1Fee;
+        prevWallet2Fee = wallet2Fee;
+        prevTokenRewardsFee = tokenRewardsFee;
+        prevLiquidityFee = liquidityFee;
+        prevTotalAdminFees = totalAdminFees;
+        wallet1Fee = 0;
+        wallet2Fee = 0;
+        tokenRewardsFee = 0;
+        liquidityFee = 0;
+        totalAdminFees = 0;
     }
     function restoreAllFee() private {
-    wallet1Fee = prevWallet1Fee;
-    wallet2Fee = prevWallet2Fee;
-    tokenRewardsFee = prevTokenRewardsFee;
-    liquidityFee = prevLiquidityFee;
-    totalAdminFees = prevTotalAdminFees;
+        wallet1Fee = prevWallet1Fee;
+        wallet2Fee = prevWallet2Fee;
+        tokenRewardsFee = prevTokenRewardsFee;
+        liquidityFee = prevLiquidityFee;
+        totalAdminFees = prevTotalAdminFees;
     }
+    //转账方法
     function _transfer(
         address from,
         address to,
         uint256 amount
     ) internal {
+        //黑名单地址无法转移
         require(!_isBlacklisted[from], "Blacklisted address cannot transfer!");
+        //黑名单地址无法转移
         require(!_isBlacklisted[to], "Blacklisted address cannot transfer!");
+        //零地址不可以转出
         require(from != address(0), "ERC20: transfer to the zero address");
+        //零地址不可以收款
         require(to != address(0), "ERC20: transfer to the zero address");
         
             if (
-            from != owner() &&
-            to != owner() &&
-            to != address(0) &&
-            to != address(0xdead) &&
-            !automatedMarketMakerPairs[to] &&
+            from != owner() && //转出者不是owner
+            to != owner() && // 收款者不是owner
+            to != address(0) && // 收款者不是零地址
+            to != address(0xdead) && //收款者不是 ？？
+            !automatedMarketMakerPairs[to] &&  //转入转出者不是 自动做市商配对的商店地址
             automatedMarketMakerPairs[from]
         ) {
             require(
-                amount <= maxBuyTranscationAmount,
+                amount <= maxBuyTranscationAmount, //转账金额必须小于等于 最大买入交易金额
                 "Transfer amount exceeds the maxTxAmount."
             );
-            
+            //收款地址余额
             uint256 contractBalanceRecipient = balanceOf(to);
             require(
                 contractBalanceRecipient + amount <= _maxWalletToken,
                 "Exceeds maximum wallet token amount."
+                //收款之后的总余额必须小于等于 _maxWalletToken
             );
         }
+        //是否已经开启交易
         bool tradingIsEnabled = getTradingIsEnabled();
 
         if(!tradingIsEnabled) {
-            require(canTransferBeforeTradingIsEnabled[from], "BDR: This account cannot send tokens until trading is enabled");
+            require(canTransferBeforeTradingIsEnabled[from], "BDR: 在启用交易之前，此帐户无法发送代币");
         }
-
+        
         if(amount == 0) {
             return;
         }
 
         if( 
             !swapping &&
-            tradingIsEnabled &&
-            automatedMarketMakerPairs[to] && 
+            tradingIsEnabled && //已经开启交易
+            automatedMarketMakerPairs[to] &&  //转入转出者不是 自动做市商配对的商店地址
             // sells only by detecting transfer to automated market maker pair
             // 仅通过检测到自动做市商对的转移进行销售
             from != address(uniswapV2Router) && 
             //router -> pair is removing liquidity which shouldn't have max
-            //路由器 -> 配对正在消除不应具有最大值的流动性
-            !_isExcludedFromFees[to] 
+            //路由器 -> 货币对正在消除不应具有最大值的流动性
+            !_isExcludedFromFees[to]  //收款账户不是免税账户
             //no max for those excluded from fees
             //不收取费用的人没有最高限额
         ) {
-            require(amount <= maxSellTransactionAmount, "Sell transfer amount exceeds the maxSellTransactionAmount.");
+            //转账金额超过 maxSellTransactionAmount
+            require(amount <= maxSellTransactionAmount, "Sell transfer amount exceeds the maxSellTransactionAmount."); 
         }
+        //合约代币余额
         uint256 contractTokenBalance = balanceOf(address(this));
         
         bool canSwap = contractTokenBalance >= swapTokensAtAmount;
 
         if(
-            tradingIsEnabled && 
+            tradingIsEnabled && //已经开启交易
             canSwap &&
             !swapping &&
-            !automatedMarketMakerPairs[from] &&
+            !automatedMarketMakerPairs[from] && //转入转出者是 自动做市商配对的商店地址
             from != burnAddress &&
             to != burnAddress
         ) {
@@ -989,7 +1016,7 @@ contract BDR is IERC20, Ownable {
             swapping = false;
         }
 
-
+        //转账费用
         bool takeFee = tradingIsEnabled && !swapping;
 
         // if any account belongs to _isExcludedFromFee account then remove the fee
@@ -1013,6 +1040,7 @@ contract BDR is IERC20, Ownable {
         }*/
 
        // super._transfer(from, to, amount);
+       //真正开始转账， 
        _tokenTransfer(from,to,amount,takeFee);
 
     }
@@ -1021,32 +1049,41 @@ contract BDR is IERC20, Ownable {
     // 此方法负责收取所有费用，如果 takeFee 为true
     function _tokenTransfer(address sender, address recipient, uint256 amount,bool takeFee) private {
         if(!takeFee)
-            removeAllFee();
+            removeAllFee(); // 如果takeFee 为false 清空所有费用
         
         if (_isExcludedFromFees[sender] && !_isExcludedFromFees[recipient]) {
+            //如果转账者是免税账户 收款者不是免税账户
             _transferFromExcluded(sender, recipient, amount);
+            
         } else if (!_isExcludedFromFees[sender] && _isExcludedFromFees[recipient]) {
+            //如果转账者不是免税账户 收款者是免税账户
             _transferToExcluded(sender, recipient, amount);
         } else if (!_isExcludedFromFees[sender] && !_isExcludedFromFees[recipient]) {
+             //如果转账者收款者都不是免税账户
             _transferStandard(sender, recipient, amount);
         } else if (_isExcludedFromFees[sender] && _isExcludedFromFees[recipient]) {
+            //如果转账者收款者都是免税账户
             _transferBothExcluded(sender, recipient, amount);
         } else {
+            //这里默认使用 都不是免税账户的方式
             _transferStandard(sender, recipient, amount);
         }
         
-        if(!takeFee)
+        //如果是免税账户转账 则转账完成后 恢复所有费用
+        if(!takeFee) 
             restoreAllFee();
     }
-
+     //如果转账者收款者都不是免税账户
     function _transferStandard(address sender, address recipient, uint256 tAmount) private {
         (uint256 rAmount, uint256 rTransferAmount, uint256 rRewardFee, uint256 tTransferAmount, uint256 tRewardFee, uint256 tAdminFees) = _getValues(tAmount);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         _takeFees(tAdminFees);
         _reflectFee(rRewardFee, tRewardFee);
+        // 当成功转移token时，一定要触发Transfer事件
         emit Transfer(sender, recipient, tTransferAmount);
     }
+    // 收取费用
     function _takeFees(uint256 tAdminFees) private {
         uint256 currentRate =  _getRate();
         uint256 rAdminFees = tAdminFees.mul(currentRate);
@@ -1054,23 +1091,33 @@ contract BDR is IERC20, Ownable {
         if(_isExcludedFromFees[address(this)])
             _tOwned[address(this)] = _tOwned[address(this)].add(tAdminFees);
     }
+    //如果转账者不是免税账户 收款者是免税账户
     function _transferToExcluded(address sender, address recipient, uint256 tAmount) private {
         (uint256 rAmount, uint256 rTransferAmount, uint256 rRewardFee, uint256 tTransferAmount, uint256 tRewardFee, uint256 tAdminFees) = _getValues(tAmount);
+        //转账者扣除转账金额
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
+        // 收款者添加收款金额
         _tOwned[recipient] = _tOwned[recipient].add(tTransferAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);           
         _takeFees(tAdminFees);
         _reflectFee(rRewardFee, tRewardFee);
+        // 当成功转移token时，一定要触发Transfer事件
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
+    //转账者是免税账户 收款者不是免税账户
     function _transferFromExcluded(address sender, address recipient, uint256 tAmount) private {
         (uint256 rAmount, uint256 rTransferAmount, uint256 rRewardFee, uint256 tTransferAmount, uint256 tRewardFee, uint256 tAdminFees) = _getValues(tAmount);
+        // 从转账者账户扣除转账金额
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
+        // 从收款者账户增加 到账金额
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);   
+        //收取管理费
         _takeFees(tAdminFees);
+        //分红费用？
         _reflectFee(rRewardFee, tRewardFee);
+        // 当成功转移token时，一定要触发Transfer事件
         emit Transfer(sender, recipient, tTransferAmount);
     }
     function _transferBothExcluded(address sender, address recipient, uint256 tAmount) private {
@@ -1081,6 +1128,7 @@ contract BDR is IERC20, Ownable {
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);        
         _takeFees(tAdminFees);
        _reflectFee(rRewardFee, tRewardFee);
+       // 当成功转移token时，一定要触发Transfer事件
         emit Transfer(sender, recipient, tTransferAmount);
     }
     
@@ -1089,24 +1137,56 @@ contract BDR is IERC20, Ownable {
         _tFeeTotal = _tFeeTotal.add(tFee);
     }
 
+    /**
+    * @param tAmount 转账金额
+    * @return rAmount 转账金额
+    * @return rTransferAmount 实际转账金额
+    * @return rRewardFee 分红金额
+    * @return tTransferAmount 实际转账金额
+    * @return tRewardFee 分红金额
+    * @return tAdminFees 管理费
+     */
     function _getValues(uint256 tAmount) private view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-        (uint256 tTransferAmount, uint256 tRewardFee, uint256 tAdminFees) = _getTValues(tAmount);
+        // t 的 实际转账金额， 转账分红， 总管理费
+        (uint256 tTransferAmount, uint256 tRewardFee, uint256 tAdminFees) = _getTValues(tAmount); //返回 实际转账金额， 转账分红， 总管理费
+        // r的 转账金额 实际转账金额 转账分红
         (uint256 rAmount, uint256 rTransferAmount, uint256 rRewardFee) = _getRValues(tAmount, tRewardFee,tAdminFees, _getRate());
+
         return (rAmount, rTransferAmount, rRewardFee, tTransferAmount, tRewardFee, tAdminFees);
     }
 
     function _getTValues(uint256 tAmount) private view returns (uint256, uint256, uint256) {
+        //转账分红 = 转账金额 * 费率 / 100
         uint256 tRewardFee = calculateTokenRewardFee(tAmount);
+        // 总管理费 = 转账金额 * totalAdminFees / 100
         uint256 tAdminFees = calculateAdminFees(tAmount);
+        //实际转账金额 = 转账金额 - 转账分红 - 总管理费
         uint256 tTransferAmount = tAmount.sub(tRewardFee).sub(tAdminFees);
+        //返回 实际转账金额， 转账分红， 总管理费
         return (tTransferAmount, tRewardFee, tAdminFees);
     }
+    //计算转账分红
     function calculateTokenRewardFee(uint256 _amount) private view returns (uint256) {
+        //转账金额 * 费率 / 100
         return _amount.mul(tokenRewardsFee).div(10**2);
     }
+    //总管理费
     function calculateAdminFees(uint256 _amount) private view returns (uint256) {
+        //转账金额 * totalAdminFees / 100
         return _amount.mul(totalAdminFees).div(10**2);
     }
+    /**
+     * @param tAmount 转账金额
+     * @param tRewardFee 转账分红
+     * @param tAdminFees 管理费
+     * @param currentRate 虚拟货币总量 / 真实货币总量 得到的一个比例，除以这个比例即可拿到真实的余额。
+     *
+     * @return rAmount  转账金额 = 转账金额 * currentRate
+     * @return rRewardFee  转账分红 = 转账分红 * currentRate
+     * @return rAdminFees  管理费 = 管理费 * currentRate
+     * @return rTransferAmount  r转账金额 = 转账金额 - 转账分红 - 管理费
+     *
+     */
     function _getRValues(uint256 tAmount, uint256 tRewardFee, uint256 tAdminFees, uint256 currentRate) private pure returns (uint256, uint256, uint256) {
         uint256 rAmount = tAmount.mul(currentRate);
         uint256 rRewardFee = tRewardFee.mul(currentRate);
@@ -1119,8 +1199,11 @@ contract BDR is IERC20, Ownable {
         return rSupply.div(tSupply);
     }
     function _getCurrentSupply() private view returns(uint256, uint256) {
+        //总发行量
         uint256 rSupply = _rTotal;
-        uint256 tSupply = _tTotal;      
+        //虚拟货币总量
+        uint256 tSupply = _tTotal; 
+
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_rOwned[_excluded[i]] > rSupply || _tOwned[_excluded[i]] > tSupply) return (_rTotal, _tTotal);
             rSupply = rSupply.sub(_rOwned[_excluded[i]]);
