@@ -1,15 +1,17 @@
 # UniswapV2周边合约学习（四）-- UniswapV2Migrator.sol
 
-记得朋友圈看到过一句话，如果Defi是以太坊的皇冠，那么Uniswap就是这顶皇冠中的明珠。Uniswap目前已经是V2版本，相对V1，它的功能更加全面优化，然而其合约源码却并不复杂。本文为个人学习UniswapV2源码的系列记录文章。
 
-一、Migrator合约介绍
+## 一、Migrator合约介绍
+
 在上一次学习完了Router合约后，UniswapV2核心合约及周边合约的主要部分就已经学习完了，目前就只剩下一些应用示例了。Migrator合约用来将某个交易对的流动性从V1版本迁移到V2版本。其实它也可以算为应用示例的一部分，但作为一种官方实现，并没有放在examples目录。
 
 因为UniswapV1版本的交易对为ETH/ERC20交易对，所以迁移到V2版本必然为WETH/ERC20交易对。在上一次学习中提到，Router合约有一个addLiquidityETH方法就是用来处理提供流动性时一种资产为ETH的。
 
 因此，这个迁移的过程就很清晰了：从V1版本移除流动性，得到ETH和WETH；再调用Router合约的addLiquidityETH方法向V2版本添加流动性（注意，如果V2版本的交易对不存在，会自动创建哟）。最后，如果其中有一种资产有多余（最多一种多余），则退还给流动性提供者（调用者）。
 
-二、合约源码
+## 二、合约源码
+
+```
 pragma solidity =0.6.6;
 
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
@@ -59,56 +61,10 @@ contract UniswapV2Migrator is IUniswapV2Migrator {
         }
     }
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-三、源码学习
+```
+
+## 三、源码学习
+
 第一行，指定Solidity版本，同边合约的Solidity版本与核心合约的版本并不一样。
 
 六个import语句，导入所需要的工具及相关接口定义。因为它需要调用V1版本的交易对合约，所以导入了V1版本的Factory和Exchange接口。（V1版本没有周边合约，欲交易的资产也不是先转移到交易对）。
@@ -133,6 +89,7 @@ migrate函数，本合约唯一对外接口，也是唯一功能。用来将Unis
 
 第二行，获取调用者在V1版本交易对的流动性（V1版本交易对也是ERC20代币，其流动性就是其本身代表的ERC20代币）。V1版本交易对的代码片断为:
 
+```
 name: public(bytes32)                             # Uniswap V1
 symbol: public(bytes32)                           # UNI-V1
 decimals: public(uint256)                         # 18
@@ -140,23 +97,19 @@ totalSupply: public(uint256)                      # total number of UNI in exist
 balances: uint256[address]                        # UNI balance of an address
 allowances: (uint256[address])[address]           # UNI allowance of one address on another
 token: address(ERC20)                             # address of the ERC20 token traded on this contract
-1
-2
-3
-4
-5
-6
-7
+```
+
 虽然它是使用Vyper（类Python）语言编写的，仍然可以看出它有name,symbol,decimals,totalSupply,,balances,allowances等ERC20代币的基本属性或接口。
 
 第三行需要将V1交易对的流动性转移到本合约，注意这里因为非直接转移，所以需要事先授权。并且转移后必须返回true值。
 
 第四行将调用V1交易对的removeLiquidity函数，移除调用者在第三行转过来的流动性，得到一种代币和ETH。这里V1版本的removeLiquidity函数的四个参数分别为：移除的流动性数量，得到的最小ETH数量，得到的最小代币数量，最后交易时间。其函数定义为：
 
+```
 @public
 def removeLiquidity(amount: uint256, min_eth: uint256(wei), min_tokens: uint256, deadline: timestamp) -> (uint256(wei), uint256):
-1
-2
+```
+
 这里将得到的ETH及代币最小数量设置为最小值1，将最晚交易时间设置为了最大时间，是为了保证该交易能顺利进行，不受这些条件限制。返回值就是提取的ETH数量和另一种代币的数量。
 
 第五行将对Router1合约进行授权，授权的代币为token，授权的数量就是刚才提取的代币数量amountTokenV1。为什么要授权呢，因为调用Router合约的相应方法需要得到授权，否则无法转移调用者的代币（这里相对Router合约而言，它的调用者就是本合约，所以授权者也是本合约）.
@@ -167,9 +120,12 @@ def removeLiquidity(amount: uint256, min_eth: uint256(wei), min_tokens: uint256,
 
 如果是token多了，注意：它的第一步是将token对于本合约的授权额度重置为0，注释中提到是一种良好的习惯，其实也是一种安全防范措施。前段时间的DeFi Saver交易对的用户资产被盗，也有这个授权额度的因素在里面。第二步将多余的代币返回。
 如果ETH多了，这里就将ETH退回。注释也讲了，addLiquidityETH会确保所有的资产会被使用（至少会用完其中一种），所以else是安全的，不存在两种资产同时有剩余的情况。
-四、实战分析
+
+## 四、实战分析
+
 本合约是UniswapV2自己的从V1交易对迁移到V2交易对的例子。学习完它之后我们再来学习一个从UniswapV2交易对迁移流动性到类似DeFI交易对的例子，下面是SuShiSwap中Migrator.sol的代码片断：
 
+```
 function migrate(IUniswapV2Pair orig) public returns (IUniswapV2Pair) {
     require(msg.sender == chef, "not from master chef");
     require(block.number >= notBeforeBlock, "too early to migrate");
@@ -189,25 +145,8 @@ function migrate(IUniswapV2Pair orig) public returns (IUniswapV2Pair) {
     desiredLiquidity = uint256(-1);
     return pair;
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
+```
+
 这里不对代码写的好与差做任何评价，只是分析它的代码（个人理解，未必正确）。函数的参数为欲迁移的流动性对应的Uniswapv2交易对，返回参数为新的交易对。虽然这里命名用的是IUniswapV2Pair，但其实旧交易对未必就是UniswapV2交易对，也可以是其它类似DeFi的交易对（甚至是SuShi自己的交易对，不过这样它就必须有两个版本了）。当然，这里肯定就是UniswapV2交易对。
 
 注意：笔者只是很早前大概看了一下SuShi的合约，在写这篇文章时发现它已经将Migartor升级到Migrator2了。瞄了一眼，看上去做了一些改进，但是核心应该没有变。笔者时间有限，就没有再去看新的Migrator2.sol合约了。所以下面的学习仍然以上面的代码为例，有兴趣的读者可以自己去看一下它在github上的最新源码。
@@ -242,7 +181,7 @@ function migrate(IUniswapV2Pair orig) public returns (IUniswapV2Pair) {
 
 因为该函数主要是用来处理初始资产注入，所以这里未考虑资产有多余的情况（初始注入不会有多余资产）。
 
-五、结束语
+## 五、结束语
 好了，本次迁移合约的学习到此结束了，流动性迁移还是比较简单的。就是先把原流动性提取成相应资产，再转入到类UniswapV2的交易对中，然后再调用新交易对的mint方法进行注入资产得到新流动性。当然，如果资产有剩余的，会返回给调用者。
 
 下一次计划学习UniswapV2周边合约中的一些应用示例。

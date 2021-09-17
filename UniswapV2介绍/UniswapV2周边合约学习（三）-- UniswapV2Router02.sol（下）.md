@@ -1,4 +1,4 @@
-记得朋友圈看到过一句话，如果Defi是以太坊的皇冠，那么Uniswap就是这顶皇冠中的明珠。Uniswap目前已经是V2版本，相对V1，它的功能更加全面优化，然而其合约源码却并不复杂。本文为个人学习UniswapV2源码的系列记录文章。
+# UniswapV2周边合约学习（三）-- UniswapV2Router02.sol（下）
 
 在序列文章的上一篇我们学习了UniswapV2Router02.sol合约源码的上半部分（流动性供给部分），这次我们来学习下半部分，也就是资产交易部分。
 
@@ -6,9 +6,10 @@
 
 本文接下来内容中，会交替使用资产和ERC20代币这两个术语，在涉及到交易对时，它们基本上是等同的。
 
-一、资产交易函数源码学习
+## 一、资产交易函数源码学习
 _swap函数。该函数是一个internal函数，它也是其它资产交易接口的核心，我们先看其源码：
 
+```
 // **** SWAP ****
 // requires the initial amount to have already been sent to the first pair
 function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
@@ -23,20 +24,8 @@ function _swap(uint[] memory amounts, address[] memory path, address _to) intern
         );
     }
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
+```
+
 它把交易资产的核心逻辑抽象出来独立为一个内部函数，方便各个资产交易外部接口调用（代码复用），此函数为内部函数，用户无法直接调用。从注释中我们可以知道，需要事先将初始数量的代币发送到第一个交易对（ 这是UniswapV2的先转移后交易特性决定的）。
 
 可以看到它有两个输入参数 amounts和path，分别为uint及地址数组，那么它们代表什么含义呢？
@@ -65,6 +54,7 @@ function _swap(uint[] memory amounts, address[] memory path, address _to) intern
 
 swapExactTokensForTokens函数。从函数名称可以看出它是指定卖出固定数量的某种资产，买进另一种资产，该值由计算得来，同时支持交易对链（也就是上面讲到的 A => B => C模式)。函数代码为：
 
+```
 function swapExactTokensForTokens(
     uint amountIn,
     uint amountOutMin,
@@ -79,20 +69,8 @@ function swapExactTokensForTokens(
     );
     _swap(amounts, path, to);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
+```
+
 其参数分别为卖出的初始资产数量，买进的另一种资产的最小值，交易对链，接收者地址和最迟交易时间。返回值amounts的含义见_swap函数。
 
 函数代码的第一行用来计算当前该交易的amounts，注意它使用了自定义工具库的getAmountsOut函数进行链上实时计算的，所以得出的值是准确的最新值。amounts[0]就是卖出的初始资产数量，也就是amountIn。
@@ -109,6 +87,7 @@ function swapExactTokensForTokens(
 
 swapTokensForExactTokens函数。从函数名称可以看出它是指定交易时买进的资产数量，而卖出的资产数量则不指定，该值可以通过计算得来。结合函数2我们可以看到，函数接口可以分为指定买进（本函数）和指定卖出（函数2）两种类型。那么为什么会有这两种方式呢？因为Uniswap交易对采用了恒定乘积算法，它的价格是个曲线，不是线性的。因此指定买进和指定卖出计算的方式是不一样的。于是这里便有了这两种接口（函数），然而它们的底层实现却是统一的逻辑（_swap函数）。本函数代码为：
 
+```
 function swapTokensForExactTokens(
     uint amountOut,
     uint amountInMax,
@@ -123,20 +102,8 @@ function swapTokensForExactTokens(
     );
     _swap(amounts, path, to);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
+```
+
 函数的参数同函数2类似，只不过前两个参数变成了拟买进的资产的数量和指定卖入资产的最大值（保护用户，防止价格波动过大从而使卖出资产数量大大超过用户预期）。返回值amounts的含义和前面一样，这里不再重复阐述了。
 
 函数的第一行调用库函数来计算返回值amounts，因为它是同一个交易里合约实时计算，所以不必担心时效性问题，总是交易时的最新值。
@@ -146,6 +113,7 @@ function swapTokensForExactTokens(
 该函数也需要事先得到用户授权以转移初始卖出资产到交易对合约。
 swapExactETHForTokens函数。同swapExactTokensForTokens类似，只不过将初始卖出的Token换成了ETH。在上一篇文章学习流动性供给时已经介绍了ETH/WETH的相互兑换，这里就不再阐述了。注意这里函数参数不再有amountInMax，因为随方法发送的ETH数量就是用户指定的最大值（WETH与ETH是等额1:1兑换的）。如果计算的结果超了则ETH会不足，抛出错误重置整个交易。
 
+```
 function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
     external
     virtual
@@ -161,21 +129,8 @@ function swapExactETHForTokens(uint amountOutMin, address[] calldata path, addre
     assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
     _swap(amounts, path, to);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
+```
+
 函数的第一行验证第一个代币地址必须为WETH地址。因为Uniswap交易对为ERC20/ERC20交易对，卖出ETH之前会自动转换成为等额WETH（一种ERC20代币）。第一个交易对实质上是WETH/ERC20交易对，需要在此卖出WETH，所以第一个地址（卖出的初始资产地址）必须为WETH。
 第二行用来计算amounts。
 第三行，验证最终买进的资产数量必须大于用户指定的值，防止价格波动太大。
@@ -185,6 +140,7 @@ function swapExactETHForTokens(uint amountOutMin, address[] calldata path, addre
 本函数没有转移用户的ERC20代币，所以没有授权操作。ETH兑换后的WETH就在本合约里，是合约自己的资产，所以调用了WETH合约的transfer方法而不是transferFrom方法。
 swapTokensForExactETH函数。同swapTokensForExactTokens类似，只不过指定买进的不是Token（ERC20代币），而是ETH。所以交易链的最后一个代币地址必须为WETH，这样才会买进WETH，然后再将它兑换成等额ETH。
 
+```
 function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
     external
     virtual
@@ -202,23 +158,8 @@ function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calld
     IWETH(WETH).withdraw(amounts[amounts.length - 1]);
     TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
+```
+
 函数的第一行验证path中最后一个必须是WETH地址。
 第二行通过库函数计算amounts，含义同上。
 第三行验证计算得到的卖出资产数量必须小于用户限定的最大值，价格保护。
@@ -229,6 +170,7 @@ function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calld
 此函数在转移卖出资产到第一个交易对时也需要事先授权。
 swapExactTokensForETH函数。同``swapExactTokensForTokens函数类似，只不过将最后获取的ERC20代币改成ETH了。因此，交易链的最后一个代币地址必须为WETH，这样才能卖进WETH然后再兑换成等额ETH。该函数同上一个函数swapTokensForExactETH`也类似，只不过一个是指定买进多少ETH，另一个是指定卖出多少资产。函数代码为:
 
+```
 function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
     external
     virtual
@@ -246,23 +188,8 @@ function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calld
     IWETH(WETH).withdraw(amounts[amounts.length - 1]);
     TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
+```
+
 第一行验证path中的最后一个代币地址为WETH地址。
 第二行通过库函数计算amounts，含义同上。
 第三行验证交易链最终买进的的WETH数量（会兑换成等额ETH）不能小于用户的限定值。
@@ -275,6 +202,7 @@ swapETHForExactTokens函数。卖出一定数量的ETH，买进指定数量的�
 
 要卖出ETH，所以第一个地址必定为WETH地址。因为是指定买进资产，肯定是利用工具库函数反向遍历来计算amounts。又因为第一个交易对是包含WETH的交易对，所以交易前必须将拟卖出的ETH兑换成WETH到本合约，然后将WETH从合约发送到第一个交易对。接着会调用_swap函数进行交易，最后将多余的ETH退回给调用者。大家可以对照一下该函数的代码看是不是这样：
 
+```
 function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
     external
     virtual
@@ -292,27 +220,13 @@ function swapETHForExactTokens(uint amountOut, address[] calldata path, address 
     // refund dust eth, if any
     if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
+```
+
 通过对照可以发现猜想的逻辑只是少了一个验证计算得到的卖出ETH数量。虽然不验证时，如果amounts[0] > msg.value的话，在兑换WETH时会因为ETH不足而出错重置。但万一由于某种原因导致合约本身的ETH数量不为0，那么此时就有可能通过了（相当于用合约已有的ETH帮你支付）。所以这里还是需要验证amounts[0] <= msg.value。
 
 _swapSupportingFeeOnTransferTokens函数。这个函数从名称上看，和_swap函数的区别是支持使用转移的代币支付手续费。在上一篇文章流动性供给时已经提到了使用转移代币支付手续费，笔者以此也不熟悉，现实中也未接触或者使用过。但是可以简单认为此类代币（拓展的ERC20代币）在资产转移时可能会有损耗（部分资产转移到一个协议地址来支付手续费），转移的数量未必就是最后接收的数量。这是笔者的个人理解，未必正确，请大家见谅，也请大家留言指出使用转移的代币支付手续费的正确理解方式。此函数的代码为：
 
+```
 // **** SWAP (supporting fee-on-transfer tokens) ****
 // requires the initial amount to have already been sent to the first pair
 function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
@@ -333,26 +247,8 @@ function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) 
         pair.swap(amount0Out, amount1Out, to, new bytes(0));
     }
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
+```
+
 相比_swap函数，从输入参数来看，少了一个amounts，也就是涉及到的此类资产数量不能再由自定义的工具库函数计算得到了。函数体内同样是一个for循环，用来遍历每个交易对进行交易。
 
 循环体内的第一行获取当前交易对的两种代币地址。
@@ -393,6 +289,7 @@ function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) 
 在支持代币支付交易手续费的交易中，因为资产转移过程中可能有损耗，所以每一个交易对的卖出资产数量必须由方法M计算得到，包含第一个交易对的卖出资产数量。
 swapExactTokensForTokensSupportingFeeOnTransferTokens。有了上面的_swapSupportingFeeOnTransferTokens函数做铺垫，这个函数就比较好理解了。从名称上看，它和swapExactTokensForTokens函数相同，只不过多了支持FeeOnTransferTokens。函数代码为：
 
+```
 function swapExactTokensForTokensSupportingFeeOnTransferTokens(
     uint amountIn,
     uint amountOutMin,
@@ -410,23 +307,8 @@ function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT'
     );
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
+```
+
 第一行将用户欲卖出的资产转入到第一个交易对中。
 
 第四行用来记录接收者地址在交易链最后一个代币合约中的余额。假定 A => B => C，就是C代币的余额。
@@ -441,6 +323,7 @@ function swapExactTokensForTokensSupportingFeeOnTransferTokens(
 
 swapExactETHForTokensSupportingFeeOnTransferTokens函数。同函数9类似，只不过将卖出的TOKEN改成了ETH。既然卖出ETH，它就又和函数swapExactETHForTokens类似。因此，逻辑上也很好理解，和普通TOKEN => TOKEN接口相比，多了一个计算并验证买进的资产数量并和WETH/ETH的相互兑换。函数代码为：
 
+```
 function swapExactETHForTokensSupportingFeeOnTransferTokens(
     uint amountOutMin,
     address[] calldata path,
@@ -464,29 +347,8 @@ function swapExactETHForTokensSupportingFeeOnTransferTokens(
         'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT'
     );
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
+```
+
 函数的第一行用来验证交易链第一个代币地址为WETH地址，原因前面已经讲过了。
 第二行：随函数发送的ETH就是欲卖出的资产，ETH需要兑换成WETH。
 第三行，将ETH兑换成WETH。
@@ -495,6 +357,7 @@ function swapExactETHForTokensSupportingFeeOnTransferTokens(
 WETH这里不用考虑也不会有损耗，为什么呢？因为它是开源的，它是不支持转移代币支付手续费的。
 swapExactTokensForETHSupportingFeeOnTransferTokens函数。有了前面的学习，这个函数也很简单了，就是卖出指定数量的初始TOKEN，最后得到一定数量的ETH，同时支持使用转移的代币支付手续费。函数代码为：
 
+```
 function swapExactTokensForETHSupportingFeeOnTransferTokens(
     uint amountIn,
     uint amountOutMin,
@@ -517,28 +380,8 @@ function swapExactTokensForETHSupportingFeeOnTransferTokens(
     IWETH(WETH).withdraw(amountOut);
     TransferHelper.safeTransferETH(to, amountOut);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
+```
+
 函数的第一行用来验证交易链最后一个地址为WETH地址，原因不再重复了。
 第2-4行用来将初始资产发送给第一个交易对，注意这里需要提前授权。
 第5行调用内部函数8进行交易操作。注意，此时的接收地址为本合约地址，因为用户买进的的是ETH，而这里得到的是WETH，不能直接让用户接收，需要转换成ETH。
@@ -548,14 +391,13 @@ function swapExactTokensForETHSupportingFeeOnTransferTokens(
 WETH并不会有损耗，原因同上。
 quote函数。注释中可以看到，从该函数起，主要就是库函数功能了，它们都是直接调用库函数做一些计算。因为库函数一般是无状态的，所以它们基本上也都是pure类型的（和对应的库函数一致）。工具库函数的说明也可以参照序列文章中的周边合约学习（一）–工具库的学习。
 
+```
 // **** LIBRARY FUNCTIONS ****
 function quote(uint amountA, uint reserveA, uint reserveB) public pure virtual override returns (uint amountB) {
     return UniswapV2Library.quote(amountA, reserveA, reserveB);
 }
-1
-2
-3
-4
+```
+
 该函数及接下来的几个函数都未在本合约使用，它们主要是直接包装了工具库函数提供给外部合约使用。为什么这么做呢？个人猜想是因为外部合约很大可能 不会使用UniswapV2这个自定义的工具库UniswapV2Library，所以周边合约提供了相应的接口方便外部合约使用这些库函数功能（当然也可以是链下调用而非合约调用）。
 
 该函数的功能为根据交易对中两种资产比例，给出一种代币数值，计算另一种代币数值。本合约在流动性供给计算时直接使用了相同功能的工具库函数。
@@ -566,6 +408,7 @@ getAmountIn函数，根据恒定乘积算法，指定买进资产的数量，计
 
 这里有一点需要提一下，其函数代码为（超级简单）：
 
+```
 function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
     public
     pure
@@ -575,30 +418,24 @@ function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
 {
     return UniswapV2Library.getAmountIn(amountOut, reserveIn, reserveOut);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
+```
+
 注意：在上一篇文章介绍Router时，官方文档提到Router1合约有一个低风险的Bug，就是指这个函数。那么到底是什么Bug呢？我们来对照一下Router1合约中相应的代码：
 
+```
 function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) public pure override returns (uint amountIn) {
     return UniswapV2Library.getAmountOut(amountOut, reserveIn, reserveOut);
 }
-1
-2
-3
+```
+
 😄😄😄，该bug是一处笔误，将UniswapV2Library.getAmountIn写成了UniswapV2Library.getAmountOut。然而该函数周边合约本身并未调用，只是作为接口提供给外部使用，因此为低风险的。但是由于合约部署之后无法更改，所以只能等到Router2来更改过来了。
 
 getAmountsOut函数。多了一个s，代表多个，意味着它用于交易链的计算中，指定卖出资产数量，计算涉及到的每种资产数量并顺序保存在一个数组中。
 
 getAmountsIn函数。多了一个s，代表多个，意味着它用于交易链的计算中，指定买进资产数量，反向推导计算出涉及到的每种资产数量并顺序保存在一个数组中。
 
-二、资产交易函数分类
+## 二、资产交易函数分类
+
 上面这么多swap函数，大家肯定看得眼花缭乱了👻👻👻。下面我们根据交易资产的种类和指定的是卖出资产数量/买进资产数量，对它们做一个简单的分类：
 
 2.1、 TOKEN => TOKEN
@@ -632,11 +469,10 @@ ETH => TOKEN 为swapExactETHForTokensSupportingFeeOnTransferTokens函数。
 TOKEN => ETH 为swapExactTokensForETHSupportingFeeOnTransferTokens函数。
 综合得到Router2合约用于资产交易的对外接口共分四类9个接口。
 
-三、总结
+## 三、总结
+
 从前面的学习中可以看出，虽然资产交易对外提供了四类共9个接口，但来回就是对两个核心_swap函数的调用。其中支持使用转移的代币支付手续费的接口中，转移资产的实际数量不再等于根据恒定乘积计算出来的结果值，而需要根据相应地址的两次资产余额相减计算出来。交易链中如果有涉及到ETH交易的，需要在交易链的对应阶段（开始或者结束阶段）进行ETH/WETH的兑换。因为UniswapV2交易对全部为ERC20/ERC20交易对，因此交易链中间流程不可能有ETH出现。
 
 至此，UniswapV2Router02.sol合约源码学习（下）就到此结束了，计划下一次进行周边合约中的UniswapV2Migrator.sol的源码学习。
-
-由于个人能力有限，难免有理解错误或者不正确的地方，还请大家多多留言指正。
 
 在UniswapV2合约的源码学习过程中，UniswapV2Router02.sol合约篇幅最长，也比较复杂。因此本合约的学习记录（上/下篇）的撰写也比较耗时，更新时间较久。

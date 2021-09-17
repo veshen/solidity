@@ -1,15 +1,17 @@
 # UniswapV2周边合约学习（六）-- ExampleOracleSimple.sol
 
-记得朋友圈看到过一句话，如果Defi是以太坊的皇冠，那么Uniswap就是这顶皇冠中的明珠。Uniswap目前已经是V2版本，相对V1，它的功能更加全面优化，然而其合约源码却并不复杂。本文为个人学习UniswapV2源码的系列记录文章。
 
-一、ExampleOracleSimple合约介绍
+## 一、ExampleOracleSimple合约介绍
+
 该合约位于examples目录下，比较简单，为一个以UniswapV2交易对作为价格预言机的示例合约。由于智能合约没有定时机制，所以必须每隔一段时间（周期）来更新价格。
 
 因为这一个示例合约涉及到了UniswapV2中的价格表示，希望没有读过UniswapV2介绍的读者能读一下，对它的价格机制有一个大致了解。同时也需要阅读一下序列文章中核心合约学习中交易对学习的记录文章：UniswapV2核心合约学习（3）——UniswapV2Pair.sol，那里面对价格计算及溢出机制有详细的学习。
 
-二、合约源码
+## 二、合约源码
+
 照例先贴出源码：
 
+```
 pragma solidity =0.6.6;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
@@ -77,74 +79,9 @@ contract ExampleOracleSimple {
         }
     }
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-三、源码学习
+```
+
+## 三、源码学习
 第一行，指定Solidity版本。
 
 2-4行，导入V2版本的facotry和交易对合约及一个自定义的浮点数库（以整数模拟浮点数），注意这三个依赖库需要在项目根目录下运行yarn合约来安装。
@@ -157,26 +94,27 @@ using FixedPoint for *;在所有类型上使用自定义浮点数工具库函数
 
 uint public constant PERIOD = 24 hours;定义平均价格的取值周期，周期太短是无法反映一段时间的平均价格的，这个取值多少可以自己定义。注意本行中出现的hours是时间单位，就是字面值1小时，转化成秒就是3600秒。当然这里是整数，只是取的数值，没有后面的秒。
 
+```
 IUniswapV2Pair immutable pair;
 address public immutable token0;
 address public immutable token1;
-1
-2
-3
+```
+
 使用状态变量记录V2交易对的实例和交易对两种代币地址，这表明该合约是某固定交易对的价格预言机。
 
+```
 uint    public price0CumulativeLast;
 uint    public price1CumulativeLast;
 uint32  public blockTimestampLast;
-1
-2
-3
+```
+
 记录当前两种代币的累计价格及最后更新区块时间的状态变量。
 
+```
 FixedPoint.uq112x112 public price0Average;
 FixedPoint.uq112x112 public price1Average
-1
-2
+```
+
 记录两种平均价格的状态变量。注意，价格是个比值，为uq112x112类型（前112位代表整数，后112位代表小数，底层实现是个uint224）。
 
 constructor构造器，输入参数为V2版本的factory地址和交易对的两种代币地址。

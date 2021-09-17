@@ -1,6 +1,7 @@
-记得朋友圈看到过一句话，如果Defi是以太坊的皇冠，那么Uniswap就是这顶皇冠中的明珠。Uniswap目前已经是V2版本，相对V1，它的功能更加全面优化，然而其合约源码却并不复杂。本文为个人学习UniswapV2源码的系列记录文章。
+# UniswapV2周边合约学习（二）-- UniswapV2Router02.sol（上）
 
-一、Router合约介绍
+## 一、Router合约介绍
+
 UniswapV2的周边合约主要作用是作为用户和核心合约之间的桥梁。也就是用户 => 周边合约 => 核心合约。UniswapV2周边合约主要包含接口定义，工具库和核心实现这三部分，在上一篇文章里已经学习了它的工具库函数，这次我们主要学习其核心实现。
 
 UniswapV2周边合约的核心实现包含UniswapV2Router01.sol和UniswapV2Router02.sol，这里我们把它简称为Router1和Router2。查看它们实现的接口我们可以看到，Router2仅在Router1上多了几个接口。那为什么会有两个路由合约呢，我们到底用哪个呢？查看其官方文档我们可以得到：
@@ -21,7 +22,7 @@ UniswapV2Router01 should not be used any longer, because of the discovery of a l
 
 UniswapV2周边合约在Github上的地址为: uniswap-v2-periphery
 
-二、源码中的公共部分
+## 二、源码中的公共部分
 UniswapV2Router02.sol源码的公共部分从第一行开始，到回调函数receive结束。主要是导入文件和公共变量定义、函数修饰符及构造器等。
 
 第一行，指定Solidity版本
@@ -30,14 +31,15 @@ UniswapV2Router02.sol源码的公共部分从第一行开始，到回调函数re
 
 4-8行，导入项目内其它接口或者库。分别为本合约要实现的接口，自定义的工具库（在周边合约学习一中有介绍），SafeMath标准ERC20接口和WETH接口。
 
-contract *UniswapV2Router02* is IUniswapV2Router02 { 合约定义，本合约实现了IUniswapV2Router02接口。
+`contract *UniswapV2Router02* is IUniswapV2Router02 { `合约定义，本合约实现了IUniswapV2Router02接口。
 
 using SafeMath for uint;很常见，在uint上使用SafeMath，防止上下溢出。
 
+```
 address public immutable override factory;
 address public immutable override WETH;
-1
-2
+```
+
 这两行代码使用两个状态变量分别记录了factory合约的地址WETH合约的地址。这里有两个关键词immutable和override需要深入学习一下。
 
 immutable，不可变的。类似别的语言的final变量。也就是它初始化后值就无法再改变了。它和constant（常量）类似，但又有些不同。主要区别在于：常量在编译时就是确定值，而immutable状态变量除了在定义的时候初始化外，还可以在构造器中初始化（合约创建的时候），并且在构造器中只能初始化，是读取不了它们的值的。并不是所有数据类型都可以为immutable变量或者常量的类型，当前只支持值类型和字符串类型(string)。
@@ -54,35 +56,35 @@ function factory() external pure returns (address);，可见factory公共状态�
 
 接下来是个ensure构造器修饰符，比较简单，就是判定当前区块（创建）时间不能超过最晚交易时间。代码为：
 
+```
 modifier ensure(uint deadline) {
     require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
     _;
 }
-1
-2
-3
-4
+```
+
 接下来是构造器，也很简单，将上面两个immutable状态变量初始化。
 
+```
 constructor(address _factory, address _WETH) public {
     factory = _factory;
     WETH = _WETH;
 }
-1
-2
-3
-4
+```
+
 接下来是一个接收ETH的函数receive。从Solidity 0.6.0起，没有匿名回调函数了。它拆分成两个，一个专门用于接收ETH，就是这个receive函数。另外一个在找不到匹配的函数时调用，叫fallback函数。该receive函数限定只能从WETH合约直接接收ETH，也就是在WETH提取为ETH时。注意仍然有可以有别的方式来向此合约直接发送以太币，例如设置为矿工地址等，这里不展开阐述。
 
+```
 receive() external payable {
     assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
 }
-1
-2
-3
-三、源码中的流动性供给部分
+```
+
+## 三、源码中的流动性供给部分
+
 _addLiquidity函数。看名字为增加流动性，为一个internal函数，提供给多个外部接口调用。它主要功能是计算拟向交易对合约注入的代币数量。函数代码如下：
 
+```
 // **** ADD LIQUIDITY ****
 function _addLiquidity(
     address tokenA,
@@ -112,35 +114,8 @@ function _addLiquidity(
         }
     }
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
+```
+
 该函数以下划线开头，根据约定一般它为一个内部函数。六个输入参数分别为交易对中两种代币的地址，计划注入的两种代币数量和注入代币的最小值（否则重置）。返回值为优化过的实际注入的代币数量。
 
 函数的前三行，注释说的很清楚，如果交易对不存在（获取的地址为零值），则创建之。
@@ -157,6 +132,7 @@ function _addLiquidity(
 
 addLiquidity函数。学习了前面的_addLiquidity函数，这个就比较好理解了。它是一个external函数，也就是用户调用的接口。函数参数和_addLiquidity函数类似，只是多了一个接收流动性代币的地址和最迟交易时间。代码片断为：
 
+```
 function addLiquidity(
     address tokenA,
     address tokenB,
@@ -173,22 +149,8 @@ function addLiquidity(
     TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
     liquidity = IUniswapV2Pair(pair).mint(to);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
+```
+
 这里deadline从UniswapV1就开始存在了，主要是保护用户，不让交易过了很久才执行，超过用户预期。函数返回值是实际注入的两种代币数量和得到的流动性代币数量。
 
 函数的第一行是调用_addLiquidity函数计算需要向交易对合约转移（注入）的实际代币数量。
@@ -208,6 +170,7 @@ addLiquidityETH函数。和addLiquidity函数类似，不过这里有一种初�
 
 本函数的参数和addLiquidity函数的参数相比，只是将其中一种代币换成了ETH。注意这里没有拟注入的amountETHDesired，因为随本函数发送的ETH数量就是拟注入的数量，所以该函数必须是payable的，这样才可以接收以太币。函数代码为：
 
+```
 function addLiquidityETH(
     address token,
     uint amountTokenDesired,
@@ -232,30 +195,8 @@ function addLiquidityETH(
     // refund dust eth, if any
     if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
+```
+
 函数的第一行仍旧是调用_addLiquidity函数来计算优化后的注入代币值。正如前面分析的那样，它使用WETH地址代替另一种代币地址，使用msg.value来代替拟注入的另一种代币（因为WETH与ETH是等额兑换）数量。当然，如果WETH/TOKEN交易对不存在，则先创建之。
 
 函数的第二行是获取交易对地址。注意它获取的方式仍然是计算得来。
@@ -272,6 +213,7 @@ function addLiquidityETH(
 
 removeLiquidity函数。移除（燃烧）流动性（代币），从而提取交易对中注入的两种代币。该函数的7个参数分别为两种代币地址，燃烧的流动性数量，提取的最小代币数量（保护用户），接收者地址和最迟交易时间。它的返回参数是提取的两种代币数量。该函数是virtual的，可被子合约重写。正如前面所讲，本合约是无状态的，是可以升级和替代的，因此本合约所有的函数都是virtual的，方便新合约重写它。下面是该函数的代码片断：
 
+```
 // **** REMOVE LIQUIDITY ****
 function removeLiquidity(
     address tokenA,
@@ -290,24 +232,8 @@ function removeLiquidity(
     require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
     require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
+```
+
 函数的第一行计算两种代币的交易对地址，注意它是计算得来，而不是从factory合约查询得来，所以就算该交易对不存在，得到的地址也不是零地址。
 
 函数的第二行调用交易对合约的授权交易函数，将要燃烧的流动性转回交易对合约。如果该交易对不存在，则第一行代码计算出来的合约地址的代码长度就为0，调用其transferFrom函数就会报错重置整个交易，所以这里不用担心交易对不存在的情况。
@@ -322,6 +248,7 @@ function removeLiquidity(
 
 removeLiquidityETH函数，同removeLiquidity函数类似，函数名多了ETH。它代表着用户希望最后接收到ETH，也就意味着该交易对必须为一个TOKEN/WETH交易对。只有交易对中包含了WETH代币，才能提取交易对资产池中的WETH，然后再将WETH兑换成ETH给接收者。函数代码为：
 
+```
 function removeLiquidityETH(
     address token,
     uint liquidity,
@@ -343,27 +270,8 @@ function removeLiquidityETH(
     IWETH(WETH).withdraw(amountETH);
     TransferHelper.safeTransferETH(to, amountETH);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
+```
+
 因为WETH的地址公开且已知，所以函数的输入参数就只有一个ERC20代币地址。相应的，其中的一个Token文字值也换成了ETH。
 
 函数的第一行直接调用上一个函数removeLiquidity来进行流动性移除操作，只不过将提取资产的接收地址改成本合约。为什么呢？因为提取的是WETH，用户希望得到ETH，所以不能直接提取给接收者，还要多一步WETH/ETH兑换操作。
@@ -380,6 +288,7 @@ function removeLiquidityETH(
 
 removeLiquidityWithPermit函数。同样也是移除流动性，同时提取交易对资产池中的两种ERC20代币。它和removeLiquidity函数的区别在于本函数支持使用线下签名消息来进行授权验证，从而不需要提前进行授权（这样会有一个额外交易），授权和交易均发生在同一个交易里。参考系列文章中的核心合约学习二中的permit函数学习。函数代码为：
 
+```
 function removeLiquidityWithPermit(
     address tokenA,
     address tokenB,
@@ -395,21 +304,8 @@ function removeLiquidityWithPermit(
     IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
     (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
+```
+
 和removeLiquidity函数相比，它输入参数多了bool approveMax及uint8 v, bytes32 r, bytes32 s。approveMax的含义为是否授权为uint256最大值(2 ** 256 -1)，如果授权为最大值，在授权交易时有特殊处理，不再每次交易减少授权额度，相当于节省gas。这个核心合约学习二中也有提及。v,r,s用来和重建后的签名消息一起验证签名者地址，具体见核心合约学习二中的permit函数学习。
 
 函数的第一行照例是计算交易对地址，注意不会为零地址。
@@ -422,6 +318,7 @@ function removeLiquidityWithPermit(
 
 removeLiquidityETHWithPermit函数，功能同removeLiquidityWithPermit类似，只不过将最后提取的资产由TOKEN变为ETH。代码可以比对removeLiquidityETH函数，因此这里大家可以自己学习一下，只是贴出函数代码：
 
+```
 function removeLiquidityETHWithPermit(
     address token,
     uint liquidity,
@@ -436,27 +333,17 @@ function removeLiquidityETHWithPermit(
     IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
     (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-removeLiquidityETHSupportingFeeOnTransferTokens函数。名字很长，从函数名字中可以看到，它支持使用转移的代币支付手续费（支持包含此类代币交易对）。
+```
+
+`removeLiquidityETHSupportingFeeOnTransferTokens`函数。名字很长，从函数名字中可以看到，它支持使用转移的代币支付手续费（支持包含此类代币交易对）。
 
 为什么会有使用转移的代币支付手续费这种提法呢？假定用户有某种代币，他想转给别人，但他还必须同时有ETH来支付手续费，也就是它需要有两种币，转的币和支付手续费的币，这就大大的提高了人们使用代币的门槛。于是有人想到，可不可以使用转移的代币来支付手续费呢？有人也做了一些探索，由此衍生了一种新类型的代币，ERC865代币，它也是ERC20代币的一个变种。ERC865代币的详细描述见ERC865: Pay transfer fees with tokens instead of ETH。
 
 然而本合约中的可支付转移手续费的代币却并未指明是ERC865代币，但是不管它是什么代币，我们可以简化为一点：此类代币在转移过程中可能发生损耗（损耗部分发送给第三方以支付整个交易的手续费），因此用户发送的代币数量未必就是接收者收到的代币数量。
 
 本函数的功能和removeLiquidityETH函数相同，但是支持使用token支付费用。函数的代码为：
+
+```
 
 // **** REMOVE LIQUIDITY (supporting fee-on-transfer tokens) ****
 function removeLiquidityETHSupportingFeeOnTransferTokens(
@@ -480,28 +367,8 @@ function removeLiquidityETHSupportingFeeOnTransferTokens(
     IWETH(WETH).withdraw(amountETH);
     TransferHelper.safeTransferETH(to, amountETH);
 }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
+```
+
 我们将它的代码和removeLiquidityETH函数的代码相比较，只有稍微不同：
 
 函数返回参数及removeLiquidity函数返回值中没有了amountToken。因为它的一部分可能要支付手续费，所以removeLiquidity函数的返回值不再为当前接收到的代币数量。
@@ -509,6 +376,7 @@ function removeLiquidityETHSupportingFeeOnTransferTokens(
 WETH不是可支付转移手续费的代币，因此它不会有损耗。
 removeLiquidityETHWithPermitSupportingFeeOnTransferTokens函数。功能同removeLiquidityETHSupportingFeeOnTransferTokens函数相同，但是支持使用链下签名消息进行授权。本函数的代码片断为：
 
+```
 function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
       address token,
       uint liquidity,
@@ -525,25 +393,11 @@ function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
           token, liquidity, amountTokenMin, amountETHMin, to, deadline
       );
   }
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
+```
+
 参照前面的函数学习可以很容易的看出本函数的代码逻辑，这里大家自己尝试一下。
 
-四、流动性供给接口分类
+## 四、流动性供给接口分类
 源码中流动性供给的外部接口可以按照是提供流动性还是移除流动性分为两大类，然后再根据初始资产/最终得到资产是ETH还是普通ERC20代币做了进一步区分。然后移除流动性还增加了支持链下签名消息授权的接口，最后移除流动性增加了支持使用转移代币支付手续费的接口。
 
 注：下文中的TOKEN均为ERC20代币。

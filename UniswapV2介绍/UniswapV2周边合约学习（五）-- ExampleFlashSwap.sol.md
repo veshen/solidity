@@ -1,11 +1,13 @@
 # UniswapV2周边合约学习（五）-- ExampleFlashSwap.sol
 
-记得朋友圈看到过一句话，如果Defi是以太坊的皇冠，那么Uniswap就是这顶皇冠中的明珠。Uniswap目前已经是V2版本，相对V1，它的功能更加全面优化，然而其合约源码却并不复杂。本文为个人学习UniswapV2源码的系列记录文章。
 
-一、ExampleFlashSwap合约介绍
+## 一、ExampleFlashSwap合约介绍
+
 该合约为利用UniswapV2交易对中的FlashSwap的先借后还特性，在买卖资产的同时和UnisapV1交易对进行交易，利用价格差进行套利。
 
-二、ExampleFlashSwap合约源码
+## 二、ExampleFlashSwap合约源码
+
+```
 pragma solidity =0.6.6;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol';
@@ -73,76 +75,10 @@ contract ExampleFlashSwap is IUniswapV2Callee {
         }
     }
 }
+```
 
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-三、源码其它部分学习
+## 三、源码其它部分学习
+
 第一行，照例是指定Solidity版本
 
 第二行，导入IUniswapV2Callee接口，该接口定义了一个接收到代币后的回调函数。在Uniswapv2核心合约中的交易对合约的swap函数有这么一行代码：
@@ -153,19 +89,20 @@ if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, 
 
 contract ExampleFlashSwap is IUniswapV2Callee {这一行为合约定义，它必须实现IUniswapV2Callee，也就是必须实现uniswapV2Call这个函数，不然无法进行回调会报错重置交易。
 
+```
 IUniswapV1Factory immutable factoryV1;
 address immutable factory;
 IWETH immutable WETH;
-1
-2
-3
+```
+
 接下来是三个状态变量，分别为V1版本的factory实例，V2版本的factory地址及WETH的实例。为什么这里V2版本的factory为地址类型而不为实例（合约类型）呢？因为下面的IUniswapV2Callee函数会利用该地址进行大量的计算（见工具库），所以这里使用地址类型更方便一些。
 
 接下来是constructor构造器，利用输入参数对上面三个状态变量初始化。注意，WETH实例的初始化不是直接传入的WETH合约地址，而是利用Router合约得到的。其实WETH合约人人都可以部署一个，是可以存在多个的。如果存在这种情况，到底用哪个地址实例化呢？用Router合约用到的那个地址才是一致的，是准确无误的。
 
 receive() external payable {} 这行代码代表可以接收直接发送的ETH，注释的意思和上一篇文章学习中对应的注释类似，这里不再重复了。
 
-四、uniswapV2Call函数学习
+## 四、uniswapV2Call函数学习
+
 uniswapV2Call函数，它的注释清晰的解释了套利的过程。这期间你不需要拥有任何一种交易对中的资产（仅需要有少量的ETH来支付gas费用），俗称空手套白狼。它的四个输入参数为调用者（其实就是最初发起交易的账号）、从V2交易对发送过来的两种资产数量、用户预先定义的数据。
 
 注意上面提到的V2版本交易对的这行代码：
@@ -208,7 +145,8 @@ transfer或send 必须在address payable类型上使用，需要使用payable(se
 第32行，验证从V1版本换回的TOKEN数量必须大于支付给UniswapV2交易对的TOKEN数量，否则不够支付（盈利为负），会重置交易。
 第33行，将支付的TOKEN发送到V2交易对，也就是msg.sender，这里就是先借后还中的“还”。这里因为使用了assert函数，所以要求token.transfer必须返回一个true。所以这个TOKEN对应的代币合约必需满足这个条件（个人猜想因为代币合约是外部合约，是未知的，有可能不返回值或者返回为false，所以必须加一个条件）。
 第34行，将剩余的TOKEN发送给最初用户（sender），这里不用考虑接收方（sender）是合约还是外部账号，因为不是发送ETH。使用assert同上。
-五、其它
+## 五、其它
+
 大家从这个合约可以看出，套利合约使用没有门槛，但它并不意味着我们随时都可以使用这个套利合约来套利。个人觉得使用条件及限制有：
 
 首先套利的两个交易对能资产要一致，这是很明显的，你不能tokenA最后套成了tokenB。
