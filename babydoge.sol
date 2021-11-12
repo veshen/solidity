@@ -20,7 +20,7 @@ interface IERC20 {
 
     /**
      * @dev Returns the amount of tokens owned by `account`.
-     返回 `account` 拥有的代币数量。 
+     返回 `account` 拥有的代币数量。
      输入地址，可以获取该地址代币的余额。
      */
     function balanceOf(address account) external view returns (uint256);
@@ -57,7 +57,7 @@ interface IERC20 {
      * transaction ordering. One possible solution to mitigate this race
      * condition is to first reduce the spender's allowance to 0 and set the
      * desired value afterwards:
-     重要提示：请注意，使用此方法更改配额会带来风险，即有人可能会通过不幸的交易顺序同时使用旧配额和新配额。 
+     重要提示：请注意，使用此方法更改配额会带来风险，即有人可能会通过不幸的交易顺序同时使用旧配额和新配额。
      缓解这种竞争条件的一种可能解决方案是首先将支出者的津贴减少到 0，然后再设置所需的值：
      * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
      *
@@ -105,14 +105,14 @@ pragma solidity >=0.6.0 <0.8.0;
  * manner, since when dealing with GSN meta-transactions the account sending and
  * paying for execution may not be the actual sender (as far as an application
  * is concerned).
- *提供有关当前执行上下文的信息，包括事务的发送者及其数据。 
+ *提供有关当前执行上下文的信息，包括事务的发送者及其数据。
  虽然这些通常可通过 msg.sender 和 msg.data 获得，
  但不应以这种直接方式访问它们，因为在处理 GSN 元交易时，
  发送和支付执行的帐户可能不是实际的发送者（就 一个应用程序有关）。
  * This contract is only required for intermediate, library-like contracts.
  只有中间的、类似library的contracts才需要这个contracts。
 
- abstract 抽象合约 
+ abstract 抽象合约
 当合约中至少有一个功能没有实现时，需要将合约标记为抽象。即使所有功能都已实现，合约也可能被标记为抽象。
 
 这可以通过使用关键字来完成，如下例所示。请注意，此合约需要定义为abstract，因为定义了函数，
@@ -668,7 +668,7 @@ contract BDR is IERC20, Ownable {
     uint256 public prevTokenRewardsFee;
     uint256 public prevLiquidityFee;
     uint256 public prevTotalAdminFees;
-    
+
     uint256 public sellFeeIncreaseFactor = 100;
     address public presaleAddress = address(0);
     // timestamp for when the token can be traded freely on PCS
@@ -678,7 +678,7 @@ contract BDR is IERC20, Ownable {
     //从所有转移中列入黑名单
     mapping (address => bool) public _isBlacklisted;
 
-    // exlcude from fees and max transaction amount
+    // exclude from fees and max transaction amount
     //应该就是一个不需要支付手续费 没有最大额度转账限制的账户mapping
     mapping (address => bool) public _isExcludedFromFees;
 
@@ -706,7 +706,7 @@ contract BDR is IERC20, Ownable {
         uint256 _wallet1Fee = 4;
         uint256 _wallet2Fee = 3;
         uint256 _lpLockTime = 1629274107;
-        
+
         name = "Baby Doge Rocket";
         symbol = "BDR";
         decimals = 18;
@@ -808,7 +808,7 @@ contract BDR is IERC20, Ownable {
     }
     function updatMaxBuyTxAmount(uint256 _newAmountNoDecimals) external onlyOwner {
         maxBuyTranscationAmount = _newAmountNoDecimals * (10 **decimals);
-    }    
+    }
     function updatMaxSellTxAmount(uint256 _newAmountNoDecimals) external onlyOwner {
         maxSellTransactionAmount = _newAmountNoDecimals * (10 **decimals);
     }
@@ -817,34 +817,34 @@ contract BDR is IERC20, Ownable {
     }
     function updatelpLockTime (uint256 newTimeInEpoch) external onlyOwner {
         lpLockTime = newTimeInEpoch;
-    }       
+    }
     function withdrawLPTokens () external onlyOwner{
         require(block.timestamp > lpLockTime, 'Wait for LP locktime to expire!');
         uint256 currentBalance = IERC20(uniswapV2Pair).balanceOf(address(this));
         IERC20(uniswapV2Pair).transfer(owner(),currentBalance);
-        
-    }      
+
+    }
     function updateTradingEnabledTime (uint256 newTimeInEpoch) external onlyOwner {
         tradingEnabledTimestamp = newTimeInEpoch;
-    }     
+    }
     function updateSellIncreaseFee (uint256 newFeeWholeNumber) external onlyOwner {
         sellFeeIncreaseFactor = newFeeWholeNumber;
     }
     function updateMaxWalletAmount(uint256 newAmountNoDecimials) external onlyOwner {
         _maxWalletToken = newAmountNoDecimials * (10**decimals);
-    }     
+    }
     function updateSwapAtAmount(uint256 newAmountNoDecimials) external onlyOwner {
         swapTokensAtAmount = newAmountNoDecimials * (10**decimals);
-    } 
+    }
     function updateWallet1Address(address payable newAddress) external onlyOwner {
         wallet1Address = newAddress;
-        excludeFromFees(newAddress, true);  
-    }    
+        excludeFromFees(newAddress, true);
+    }
     function updateWallet2Address(address payable newAddress) external onlyOwner {
         wallet2Address = newAddress;
-        excludeFromFees(newAddress, true);  
+        excludeFromFees(newAddress, true);
 
-    }         
+    }
     function updateFees(uint256 _tokenRewardsFee, uint256 _liquidityFee, uint256 _wallet1Fee, uint256 _wallet2Fee) external onlyOwner {
         tokenRewardsFee = _tokenRewardsFee;
         liquidityFee = _liquidityFee;
@@ -892,10 +892,10 @@ contract BDR is IERC20, Ownable {
             includeInReward(account);
         }
         //emit ExcludeFromFees(account, excluded);
-    }       
+    }
     function blacklistAddress(address account, bool excluded) public onlyOwner {
         _isBlacklisted[account] = excluded;
-    }    
+    }
     function excludeMultipleAccountsFromFees(address[] calldata accounts, bool excluded) external onlyOwner {
         for(uint256 i = 0; i < accounts.length; i++) {
             _isExcludedFromFees[accounts[i]] = excluded;
@@ -915,9 +915,9 @@ contract BDR is IERC20, Ownable {
         return block.timestamp >= tradingEnabledTimestamp;
     }
     function removeAllFee()
-        private 
+        private
     {
-        if(tokenRewardsFee == 0 && liquidityFee == 0) return;    
+        if(tokenRewardsFee == 0 && liquidityFee == 0) return;
         prevWallet1Fee = wallet1Fee;
         prevWallet2Fee = wallet2Fee;
         prevTokenRewardsFee = tokenRewardsFee;
@@ -950,7 +950,7 @@ contract BDR is IERC20, Ownable {
         require(from != address(0), "ERC20: transfer to the zero address");
         //零地址不可以收款
         require(to != address(0), "ERC20: transfer to the zero address");
-        
+
             if (
             from != owner() && //转出者不是owner
             to != owner() && // 收款者不是owner
@@ -977,18 +977,18 @@ contract BDR is IERC20, Ownable {
         if(!tradingIsEnabled) {
             require(canTransferBeforeTradingIsEnabled[from], "BDR: 在启用交易之前，此帐户无法发送代币");
         }
-        
+
         if(amount == 0) {
             return;
         }
 
-        if( 
+        if(
             !swapping &&
             tradingIsEnabled && //已经开启交易
             automatedMarketMakerPairs[to] &&  //转入转出者不是 自动做市商配对的商店地址
             // sells only by detecting transfer to automated market maker pair
             // 仅通过检测到自动做市商对的转移进行销售
-            from != address(uniswapV2Router) && 
+            from != address(uniswapV2Router) &&
             //router -> pair is removing liquidity which shouldn't have max
             //路由器 -> 货币对正在消除不应具有最大值的流动性
             !_isExcludedFromFees[to]  //收款账户不是免税账户
@@ -996,11 +996,11 @@ contract BDR is IERC20, Ownable {
             //不收取费用的人没有最高限额
         ) {
             //转账金额超过 maxSellTransactionAmount
-            require(amount <= maxSellTransactionAmount, "Sell transfer amount exceeds the maxSellTransactionAmount."); 
+            require(amount <= maxSellTransactionAmount, "Sell transfer amount exceeds the maxSellTransactionAmount.");
         }
         //合约代币余额
         uint256 contractTokenBalance = balanceOf(address(this));
-        
+
         bool canSwap = contractTokenBalance >= swapTokensAtAmount;
 
         if(
@@ -1040,21 +1040,21 @@ contract BDR is IERC20, Ownable {
         }*/
 
        // super._transfer(from, to, amount);
-       //真正开始转账， 
+       //真正开始转账，
        _tokenTransfer(from,to,amount,takeFee);
 
     }
-    
+
     //this method is responsible for taking all fee, if takeFee is true
     // 此方法负责收取所有费用，如果 takeFee 为true
     function _tokenTransfer(address sender, address recipient, uint256 amount,bool takeFee) private {
         if(!takeFee)
             removeAllFee(); // 如果takeFee 为false 清空所有费用
-        
+
         if (_isExcludedFromFees[sender] && !_isExcludedFromFees[recipient]) {
             //如果转账者是免税账户 收款者不是免税账户
             _transferFromExcluded(sender, recipient, amount);
-            
+
         } else if (!_isExcludedFromFees[sender] && _isExcludedFromFees[recipient]) {
             //如果转账者不是免税账户 收款者是免税账户
             _transferToExcluded(sender, recipient, amount);
@@ -1068,9 +1068,9 @@ contract BDR is IERC20, Ownable {
             //这里默认使用 都不是免税账户的方式
             _transferStandard(sender, recipient, amount);
         }
-        
+
         //如果是免税账户转账 则转账完成后 恢复所有费用
-        if(!takeFee) 
+        if(!takeFee)
             restoreAllFee();
     }
      //如果转账者收款者都不是免税账户
@@ -1098,7 +1098,7 @@ contract BDR is IERC20, Ownable {
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         // 收款者添加收款金额
         _tOwned[recipient] = _tOwned[recipient].add(tTransferAmount);
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);           
+        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         _takeFees(tAdminFees);
         _reflectFee(rRewardFee, tRewardFee);
         // 当成功转移token时，一定要触发Transfer事件
@@ -1112,7 +1112,7 @@ contract BDR is IERC20, Ownable {
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         // 从收款者账户增加 到账金额
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);   
+        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         //收取管理费
         _takeFees(tAdminFees);
         //分红费用？
@@ -1125,13 +1125,13 @@ contract BDR is IERC20, Ownable {
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _tOwned[recipient] = _tOwned[recipient].add(tTransferAmount);
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);        
+        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         _takeFees(tAdminFees);
        _reflectFee(rRewardFee, tRewardFee);
        // 当成功转移token时，一定要触发Transfer事件
         emit Transfer(sender, recipient, tTransferAmount);
     }
-    
+
     function _reflectFee(uint256 rFee, uint256 tFee) private {
         _rTotal = _rTotal.sub(rFee);
         _tFeeTotal = _tFeeTotal.add(tFee);
@@ -1202,7 +1202,7 @@ contract BDR is IERC20, Ownable {
         //总发行量
         uint256 rSupply = _rTotal;
         //虚拟货币总量
-        uint256 tSupply = _tTotal; 
+        uint256 tSupply = _tTotal;
 
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_rOwned[_excluded[i]] > rSupply || _tOwned[_excluded[i]] > tSupply) return (_rTotal, _tTotal);
@@ -1212,7 +1212,7 @@ contract BDR is IERC20, Ownable {
         if (rSupply < _rTotal.div(_tTotal)) return (_rTotal, _tTotal);
         return (rSupply, tSupply);
     }
-    
+
 
     function swapHandler(address payable walletAddress, address tokenAddressForFee, uint256 feeBalance, uint256 feePortion) internal {
         if(tokenAddressForFee != address(0)){
@@ -1227,16 +1227,16 @@ contract BDR is IERC20, Ownable {
             } else {
                 addLiquidity(feePortion, feeBalance);
             }
-        }   
+        }
     }
-    
+
     function portionCalculator(uint256 _walletFee, uint256 _otherHalf, uint256 _newBalance) internal returns (uint256,uint256){
         // calculate the portions of the liquidity to add to wallet fee
         // 计算要添加到钱包费用的流动性部分
         uint256 walletfeeBalance = _newBalance.div(totalAdminFees).mul(_walletFee);
-        uint256 walletfeePortion = _otherHalf.div(totalAdminFees).mul(_walletFee);        
+        uint256 walletfeePortion = _otherHalf.div(totalAdminFees).mul(_walletFee);
         return (walletfeeBalance,walletfeePortion);
-    }    
+    }
 
     function feeBalanceHandler(uint256 _wallet1Fee, uint256 _wallet2Fee, uint256 _otherHalf, uint256 _newBalance) internal returns(uint256, uint256){
         (uint256 wallet1feeBalance,uint256 wallet1feePortion) = portionCalculator(_wallet1Fee,_otherHalf,_newBalance);
@@ -1253,13 +1253,13 @@ contract BDR is IERC20, Ownable {
         // add liquidity to uniswap 为 Uniswap 增加流动性
         // 为 Uniswap 增加流动性为 Uniswap 增加流动性
         addLiquidity(finalHalf, finalBalance);
-    }    
+    }
     function allWalletSwapOne(uint256 wallet1feeBalance, uint256 wallet1feePortion,uint256 wallet2feeBalance, uint256 wallet2feePortion) internal{
         // added to manage receiving bnb
         // 添加管理接收bnb
-        swapHandler(wallet1Address, wallet1TokenAddressForFee, wallet1feeBalance, wallet1feePortion);         
-        swapHandler(wallet2Address, wallet2TokenAddressForFee, wallet2feeBalance, wallet2feePortion);    
-    }    
+        swapHandler(wallet1Address, wallet1TokenAddressForFee, wallet1feeBalance, wallet1feePortion);
+        swapHandler(wallet2Address, wallet2TokenAddressForFee, wallet2feeBalance, wallet2feePortion);
+    }
     function swapAndLiquify(uint256 tokens) internal  {
         // split the contract balance into halves
         // 将合约余额分成两半
@@ -1313,7 +1313,7 @@ contract BDR is IERC20, Ownable {
             address(this),
             block.timestamp
         );
-        
+
     }
     function addLiquidity(uint256 tokenAmount, uint256 ethAmount) public {
         // approve token transfer to cover all possible scenarios
@@ -1327,6 +1327,6 @@ contract BDR is IERC20, Ownable {
             0, // slippage is unavoidable
             address(this),
             block.timestamp
-        ); 
+        );
     }
 }

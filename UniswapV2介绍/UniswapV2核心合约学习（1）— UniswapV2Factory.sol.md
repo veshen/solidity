@@ -77,21 +77,23 @@ contract UniswapV2Factory is IUniswapV2Factory {
 7. allPairs，记录所有交易对地址的数组。虽然交易对址前面已经使用map记录了，但map无法遍历。如果想遍历和索引，必须使用数组。注意它的名称和权限，同样是为了实现接口。
 8. `event PairCreated(address indexed token0, address indexed token1, address pair, uint);`交易对被创建时触发的事件，注意参数中的indexed表明该参数可以被监听端（轻客户端）过滤。
 
-9. ```
+9. 构造器，很简单。参数提供了一个初始feeToSetter地址作为feeTo的设置者地址，不过此时feeTo仍然为默认值零地址，开发团队手续费未打开。
+```
 constructor(address _feeToSetter) public {
     feeToSetter = _feeToSetter;
 }
 ```
 
-构造器，很简单。参数提供了一个初始feeToSetter地址作为feeTo的设置者地址，不过此时feeTo仍然为默认值零地址，开发团队手续费未打开。
 
-10. ```
+
+10.这个函数非常简单，返回所有交易对地址数组的长度，这样在合约外部可以方便使用类似for这样的形式遍历该数组。
+```    
 function allPairsLength() external view returns (uint) {
     return allPairs.length;
 }
 ```
 
-这个函数非常简单，返回所有交易对地址数组的长度，这样在合约外部可以方便使用类似for这样的形式遍历该数组。
+
 
 11. 我们先跳过createPair函数，该函数最后学习，先看setFeeTo函数：
 
